@@ -9,14 +9,14 @@ terraform {
   
   # Point this to your successfully created bootstrap bucket
   backend "gcs" {
-    bucket = "YOUR_UNIQUE_BOOTSTRAP_STATE_BUCKET_NAME"
+    bucket = "tf-state-dark-gateway-398321"
     prefix = "terraform/state"
   }
 }
 
 provider "google" {
   project = var.project_id
-  region  = "us-central1"
+  region  = "us-east1"
 }
 
 # A random suffix generator to ensure project IDs don't collide globally
