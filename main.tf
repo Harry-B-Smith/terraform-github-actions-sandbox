@@ -1,3 +1,13 @@
+variable "project_id" {
+  type        = string
+  description = "The target Google Cloud Project ID"
+}
+
+variable "billing_account_id" {
+  type        = string
+  description = "The billing account attached to the sandbox hierarchy"
+}
+
 terraform {
   required_version = ">= 1.5.0"
   required_providers {
@@ -6,7 +16,7 @@ terraform {
       version = "~> 5.0"
     }
   }
-  
+
   # Point this to your successfully created bootstrap bucket
   backend "gcs" {
     bucket = "tf-state-dark-gateway-398321"
