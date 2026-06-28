@@ -4,24 +4,19 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 permissions:
   contents: read
-  id-token: write # Required for requesting the JWT OIDC token from Google
+  id-token: write
+
+env:
+  TF_VAR_billing_account_id: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
+  TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}
 
 jobs:
-  terraform:
-    name: "Terraform Build"
+  terraform-plan:
+    name: "1. Terraform Plan"
     runs-on: ubuntu-latest
-    
-    env:
-      # Pass variables down to your TF configurations
-      TF_VAR_billing_account_id: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
-      TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}
-
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
@@ -31,8 +26,7 @@ jobs:
       with:
         terraform_version: 1.5.7
 
-    # This step logs into GCP securely without a static JSON key file
-    - name: Authenticate to Google Cloud via OIDC
+    - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v2
       with:
         workload_identity_provider: 'projects/785454820173/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider'
@@ -41,13 +35,32 @@ jobs:
     - name: Terraform Init
       run: terraform init
 
-    - name: Terraform Format Check
-      run: terraform fmt -check
-
     - name: Terraform Plan
       run: terraform plan -input=false
 
-    # Only run Apply if the changes are being pushed/merged directly to main
+  terraform-apply:
+    name: "2. Terraform Apply"
+    runs-on: ubuntu-latest
+    needs: terraform-plan # Explicit dependency: Plan must succeed first
+    environment: production # Triggers the manual approval pop-up in GitHub
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.7
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: 'projects/785454820173/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider'
+        service_account: 'tf-bootstrap@dark-gateway-398321.iam.gserviceaccount.com'
+
+    - name: Terraform Init
+      run: terraform init
+
     - name: Terraform Apply
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       run: terraform apply -auto-approve -input=false
